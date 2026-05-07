@@ -1,0 +1,75 @@
+[
+    "I-Logix-RPY-Archive version 8.5.2 C++ 2057914",
+    {
+        "MM_TOC": [
+            "someAttr",
+            "attrC",
+            "attrD",
+            "Things"
+        ],
+        "MM_ICLASS": "IClass",
+        "MM_TAB": 0,
+        "MM_SPLIT": false,
+        "someAttr": {
+            "MM_TOC": [
+                "attrA",
+                "attrB",
+                "empty"
+            ],
+            "MM_ICLASS": "IHandle",
+            "MM_TAB": 1,
+            "MM_SPLIT": true,
+            "attrA": 1,
+            "attrB": 3,
+            "empty": ""
+        },
+        "attrC": 5,
+        "attrD": 7,
+        "Things": {
+            "MM_TOC": [
+                "size",
+                "value"
+            ],
+            "MM_ICLASS": "IThingList",
+            "MM_TAB": 1,
+            "MM_SPLIT": true,
+            "size": 2,
+            "value": [
+                {
+                    "MM_TOC": [
+                        "_id",
+                        "_type",
+                        "name",
+                        "attrE",
+                        "value"
+                    ],
+                    "MM_ICLASS": "IThing",
+                    "MM_TAB": 2,
+                    "MM_SPLIT": false,
+                    "_id": "MMNQ_GUID 12345678-9ABC-DEF1-23456789ABCD",
+                    "_type": "MMNQ_BOOL",
+                    "name": "some \"bad\" chars; no problem",
+                    "attrE": 9,
+                    "value": "\"uint16 varA = 2;\r\nuint varB = 17;\r\n{\r\n    // ignore\r\n}\r\n\r\nreturn varA + varB;\r\n            \";"
+                },
+                {
+                    "MM_TOC": [
+                        "_id",
+                        "_type",
+                        "name",
+                        "attrE",
+                        "value"
+                    ],
+                    "MM_ICLASS": "IThing",
+                    "MM_TAB": 2,
+                    "MM_SPLIT": false,
+                    "_id": "MMNQ_GUID 23456789-ABCD-EF12-3456789ABCDE",
+                    "_type": "MMNQ_ENUM",
+                    "name": "thing2",
+                    "attrE": 11,
+                    "value": "\"uint16 varD = 22;\r\nstring varE = \"hello\";\r\n\r\nreturn varE;\r\n            \";"
+                }
+            ]
+        }
+    }
+]

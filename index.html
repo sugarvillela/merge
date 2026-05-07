@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Merge</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="css/dstyle.css">
+</head>
+<body>
+    <nav class="navbar navbar-expand-md navbar-dark dnav">
+        <!-- Brand -->
+        <a class="navbar-brand" href="#">Merge</a>
+
+        <!-- Toggler/collapsibe Button -->
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#collapsibleNavbar">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <!-- Navbar links -->
+        <div class="collapse navbar-collapse" id="collapsibleNavbar">
+            <ul class="navbar-nav">
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="navbardrop" data-toggle="dropdown">
+                        View
+                    </a>
+                    <div class="dropdown-menu" id="addItem" >
+                        <a class="dropdown-item" href="#" onclick="setView(0)" >
+                            Input
+                        </a>
+                        <a class="dropdown-item" href="#" onclick="setView(1)" >
+                            Path Diff
+                        </a>
+                        <a class="dropdown-item" href="#" onclick="setView(2)" >
+                            File Diff
+                        </a>
+                        <a class="dropdown-item" href="#" onclick="setView(3)" >
+                            Output
+                        </a>
+                    </div>
+                </li>
+                <li class="nav-item dropdown">
+                    <a class="nav-link" href="#" id="nav-pref" data-toggle="modal" data-target="#modalPref">
+                        Preferences
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container-fluid">
+        <div id="forms" ></div>
+    </div>
+
+    <div class="container-fluid">
+        <div id="view0">
+            <div class="row">
+                <div class="col-sm-2" >
+                    <div class="row halfContainer" >
+                        <input type="file" id="inSrcLeft" style="display: none;" accept=".cls, .sbs" multiple/>
+                        <input type="button" class="btn-dark btn-link" value="Browse Left..." onclick="document.getElementById('inSrcLeft').click();" />
+                    </div>
+                </div>
+                <div class="col-sm-4" >
+                    <div class="row halfContainer" >
+                        <div id="srcStatus0">&nbsp;</div>
+                    </div>
+                </div>
+                <div class="col-sm-2" >
+                    <div class="row halfContainer" >
+                        <input type="file" id="inSrcRight" style="display: none;" accept=".cls, .sbs"/>
+                        <input type="button" class="btn-dark btn-link" value="Browse Right..." onclick="document.getElementById('inSrcRight').click();" />
+                    </div>
+                </div>
+                <div class="col-sm-4" >
+                    <div class="row halfContainer" >
+                        <div id="srcStatus1">&nbsp;</div>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-sm-6 p-0 m-0 halfContainer" >
+                    <pre id="formatted0"></pre>
+                </div>
+                <div class="col-sm-6 p-0 m-0 halfContainer" >
+                    <pre id="formatted1"></pre>
+                </div>
+            </div>
+        </div>
+        <div id="view1" class="hiddenView" >
+            <div class="row">
+                <div class="col-sm-6 p-0 m-0 halfContainer" >
+                        <div id="diffStatus0">&nbsp;</div>
+                </div>
+                <div class="col-sm-6 p-0 m-0 halfContainer" >
+                        <div id="diffStatus1">&nbsp;</div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-sm-6 p-0 m-0 halfContainer" >
+                        <div id="diff0">&nbsp;</div>
+                </div>
+                <div class="col-sm-6 p-0 m-0 halfContainer" >
+                        <div id="diff1">&nbsp;</div>
+                </div>
+            </div>
+        </div>
+        <div id="view2" class="hiddenView" >
+            View Two
+        </div>
+        <div id="view3" class="hiddenView" >
+            <div class="col-sm-12" >
+                <div class="row halfContainer" >
+                    <div id="regenStatus0">&nbsp;</div>
+                </div>
+            <div class="row">
+                <div class="col-sm-12" >
+                    <pre id="regen0"></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="glob/glob.js"></script>
+    <script src="parser/util.js"></script>
+    <script src="parser/tokener.js"></script>
+    <script src="parser/srcTojson.js"></script>
+    <script src="parser/jsonToSrc.js"></script>
+    <script src="disp/disp.js"></script>
+    <script src="diff/dispDiff.js"></script>
+    <script src="diff/diff.js"></script>
+    <script src="parser/fileitr.js"></script>
+    <script src="forms/pref.js"></script>
+    <script>
+        (() => { 
+            //localStorage.clear();
+            const inSrcLeft = document.getElementById('inSrcLeft');
+            inSrcLeft.addEventListener('change', () => {
+                const list = Array.from(inSrcLeft.files);
+
+                for(let i in list){
+                    if(i > 1){
+                        console.error("Processing first two files, ignoring the rest");
+                        break;
+                    }
+                    const f = list[i];
+                    Files[STORE_SOURCE][i].init(f);
+                    //document.getElementById('srcStatus' + i).innerHTML = f.name;
+                }
+            }, false);
+            document.getElementById('inSrcRight').addEventListener('change', (event) => {
+                const f = event.target.files[0];
+                Files[STORE_SOURCE][RIGHT].init(f);
+                //document.getElementById('srcStatus1').innerHTML = f.name;
+            }, false);
+
+            if(PrefStore.getData().useStorage){
+                storeStatus();
+                // if(Stores[STORE_SOURCE][LEFT].haveData()){
+                //     const data = Stores[STORE_SOURCE][LEFT].getData();
+                //     SrcToJsonMain.init(data.text, LEFT, data.metadata);
+                // }
+                // if(Stores[STORE_SOURCE][RIGHT].haveData()){
+                //     const data = Stores[STORE_SOURCE][RIGHT].getData();
+                //     SrcToJsonMain.init(data.text, RIGHT, data.metadata);
+                // }
+                // if(Stores[STORE_JSON][LEFT].haveData()){
+                //     const data = Stores[STORE_JSON][LEFT].getData();
+                //     //console.log(data)
+                //     JsonToSrcMain.init(data.text, LEFT, data.metadata);
+                // }
+
+            }
+            MainDisplay.showFilenames();
+            MainDisplay.showDebug();
+
+            // if(Stores[STORE_JSON][LEFT].haveData() && Stores[STORE_JSON][RIGHT].haveData()){
+            //     const left = Stores[STORE_JSON][LEFT].getData();
+            //     const right = Stores[STORE_JSON][RIGHT].getData();
+            //     DiffMain.init(left, right);
+            // }
+        })();
+
+        var PrefForm = getPrefForm();
+        document.getElementById("forms").innerHTML = "";
+        PrefForm.gen();
+
+        const setView = (v) => {
+            const numViews = 4;
+
+            for(let i = 0; i < numViews; i++){
+                const div = document.getElementById('view' + i );
+                div.className = (i === v)? "activeView" : "hiddenView";
+            }
+            console.log(v)
+            switch (v){
+                case 1:
+                    MainDisplay.showDiff();
+                    break;
+                case 3:
+                    MainDisplay.showRegen();
+                    break;
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,181 @@
+1   {
+2       "metadata": {
+3           "fileMetadata": {
+4               "name": "dataL",
+5               "ext": ".cls",
+6               "modified": 1774170097863,
+7               "store": 0,
+8               "subject": 0
+9           },
+10          "header": "I-Logix-RPY-Archive version 8.5.2 C++ 2057914"
+11      },
+12      "text": {
+13          "MM_TOC": [
+14              {
+15                  "k": "someAttr",
+16                  "type": "split",
+17                  "iLine": 2
+18              },
+19              {
+20                  "k": "attrC",
+21                  "type": "kvnum",
+22                  "iLine": 7
+23              },
+24              {
+25                  "k": "attrD",
+26                  "type": "kvnum",
+27                  "iLine": 8
+28              },
+29              {
+30                  "k": "Things",
+31                  "type": "split",
+32                  "iLine": 9
+33              }
+34          ],
+35          "MM_CHILDREN": [
+36              13,
+37              14
+38          ],
+39          "MM_OID": 12,
+40          "MM_PARENT": 0,
+41          "MM_ICLASS": "IClass",
+42          "MM_TAB": 0,
+43          "MM_SPLIT": false,
+44          "someAttr": {
+45              "MM_TOC": [
+46                  {
+47                      "k": "attrA",
+48                      "type": "kvnum",
+49                      "iLine": 3
+50                  },
+51                  {
+52                      "k": "attrB",
+53                      "type": "kvnum",
+54                      "iLine": 4
+55                  },
+56                  {
+57                      "k": "empty",
+58                      "type": "kv",
+59                      "iLine": 5
+60                  }
+61              ],
+62              "MM_CHILDREN": [],
+63              "MM_OID": 13,
+64              "MM_PARENT": 12,
+65              "MM_ICLASS": "IHandle",
+66              "MM_TAB": 1,
+67              "MM_SPLIT": true,
+68              "attrA": 1,
+69              "attrB": 3,
+70              "empty": ""
+71          },
+72          "attrC": 5,
+73          "attrD": 7,
+74          "Things": {
+75              "MM_TOC": [
+76                  {
+77                      "k": "size",
+78                      "type": "kvnum",
+79                      "iLine": 10
+80                  },
+81                  {
+82                      "k": "value",
+83                      "type": "split",
+84                      "iLine": 11
+85                  }
+86              ],
+87              "MM_CHILDREN": [
+88                  15,
+89                  16
+90              ],
+91              "MM_OID": 14,
+92              "MM_PARENT": 12,
+93              "MM_ICLASS": "IThingList",
+94              "MM_TAB": 1,
+95              "MM_SPLIT": true,
+96              "size": 2,
+97              "value": [
+98                  {
+99                      "MM_TOC": [
+100                         {
+101                             "k": "_id",
+102                             "type": "kvnq",
+103                             "iLine": 13
+104                         },
+105                         {
+106                             "k": "_type",
+107                             "type": "kvnq",
+108                             "iLine": 14
+109                         },
+110                         {
+111                             "k": "name",
+112                             "type": "kv",
+113                             "iLine": 15
+114                         },
+115                         {
+116                             "k": "attrE",
+117                             "type": "kvnum",
+118                             "iLine": 16
+119                         },
+120                         {
+121                             "k": "value",
+122                             "type": "kv",
+123                             "iLine": 17
+124                         }
+125                     ],
+126                     "MM_CHILDREN": [],
+127                     "MM_OID": 15,
+128                     "MM_PARENT": 14,
+129                     "MM_ICLASS": "IThing",
+130                     "MM_TAB": 2,
+131                     "MM_SPLIT": false,
+132                     "_id": "GUID 12345678-9ABC-DEF1-23456789ABCD",
+133                     "_type": "BOOL",
+134                     "name": "thing1",
+135                     "attrE": 9,
+136                     "value": "value1"
+137                 },
+138                 {
+139                     "MM_TOC": [
+140                         {
+141                             "k": "_id",
+142                             "type": "kvnq",
+143                             "iLine": 20
+144                         },
+145                         {
+146                             "k": "_type",
+147                             "type": "kvnq",
+148                             "iLine": 21
+149                         },
+150                         {
+151                             "k": "name",
+152                             "type": "kv",
+153                             "iLine": 22
+154                         },
+155                         {
+156                             "k": "attrE",
+157                             "type": "kvnum",
+158                             "iLine": 23
+159                         },
+160                         {
+161                             "k": "value",
+162                             "type": "kv",
+163                             "iLine": 24
+164                         }
+165                     ],
+166                     "MM_CHILDREN": [],
+167                     "MM_OID": 16,
+168                     "MM_PARENT": 14,
+169                     "MM_ICLASS": "IThing",
+170                     "MM_TAB": 2,
+171                     "MM_SPLIT": false,
+172                     "_id": "GUID 23456789-ABCD-EF12-3456789ABCDE",
+173                     "_type": "ENUM",
+174                     "name": "thing2",
+175                     "attrE": 11,
+176                     "value": "value2"
+177                 }
+178             ]
+179         }
+180     }
+181 }

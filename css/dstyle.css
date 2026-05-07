@@ -1,0 +1,103 @@
+ body{
+    background-color: #080825;
+    color: white;
+}
+pre {
+    background-color: #080825;
+    color: white;
+}
+.dnav {
+    background-color: #181863;
+    color: white;
+}
+.halfContainer {
+    padding: 5px 0 0 15px !important;
+    display: inline-block;
+    width: 100%;
+}
+
+/* view switching */
+.activeView {
+    display: block;
+}
+.hiddenView {
+    display: none;
+}
+
+/* display colors */
+.lineNum{
+    color: gray;
+    background-color: inherit;
+    min-width: 0;
+    border: none; 
+    display: inline;
+}
+.charKey{
+    color: #00a1a1;
+    background-color: inherit;
+    min-width: 0;
+    border: none;
+    display: inline;
+}
+.charQVal{
+    color: #82c59c;
+    background-color: inherit;
+    min-width: 0;
+    border: none;
+    display: inline;
+}
+.charNumVal{
+    color: #fff700;
+    background-color: inherit;
+    min-width: 0;
+    border: none;
+    display: inline;
+}
+.charNQVal{
+    color: #bfa3a3;
+    background-color: inherit;
+    min-width: 0;
+    border: none;
+    display: inline;
+}
+.charClassVal{
+    color: coral;
+    background-color: inherit;
+    min-width: 0;
+    border: none;
+    display: inline;
+}
+.charConn{
+    color: inherit;
+    background-color: inherit;
+    min-width: 0;
+    border: none;
+    display: inline;
+}
+.charLinked{
+    color: rgb(255, 0, 153);
+    background-color: inherit;
+    min-width: 0;
+    border: none;
+    display: inline;
+}
+/* bg colors for diff */
+.bgDiff{
+    background-color: rgba(255, 110, 110, 0.2);
+    min-width: 0;
+    border: none;
+    display: inline;
+}
+.bgDiffWide{
+    background-color: rgba(255, 110, 110, 0.2);
+    width: 100%;
+    /* min-height: 1em; */
+    border: none;
+    display: block;
+}
+.bgDiffValue{
+    background-color: rgba(255, 255, 88, 0.2);
+    min-width: 0;
+    border: 1px solid yellow;
+    display: inline;
+}
