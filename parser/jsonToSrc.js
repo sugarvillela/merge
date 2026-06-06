@@ -1,161 +1,141 @@
-const newSTranslate = (jObject) => {
-    let tokens = [];
-    let iLine = 0;
+const newListFix = (jObject) => {
+    let tab = 0;
+    const parseObj = (obj) => {
+        const valInfo = obj[keys.valInfo];
+
+        for(let infoItem of valInfo){
+            const key = infoItem.k;
+            const child = obj[key];
+
+            if(getType(child) === cType.o){
+                const isList = !child[keys.objInfo];
+                if(isList){
+                    obj[key] = convertToList(child);
+                }
+                else{
+                    parseObj(child);
+                }
+            }
+        };
+    }
+
+    const convertToList = (obj) => {
+        const list = [];
+        const valInfo = obj[keys.valInfo];
+
+        for(let infoItem of valInfo){
+            const key = infoItem.k;
+            const type = infoItem.t;
+            const child = obj[key];
+            list.push(child);
+            parseObj(child);
+        }
+        return list;
+    }
+
+    parseObj(jObject);
+}
+
+const newJsonToTokens = (jObject, metadata) => {
+    const tokens = [];
+    let tab = 0;
+
+    const add = (type, val, tab, home = false) => {
+        const t ={
+            type: type,
+            val: val,
+            tab: tab,
+            home: home
+        };
+
+        tokens.push(t);
+    }
 
     const parseObj = (obj) => {
-        const tab = obj[MM_TAB];
-        const toc = obj[MM_TOC];
+        const objInfo = obj[keys.objInfo];
+        const valInfo = obj[keys.valInfo];
 
-        tokens.push({
-            type: tTypes.oBrace,
-            v: `{ ${obj[MM_CLASS]}`,
-            iLine: iLine++,
-            tab: tab,
-            isSplit: obj[MM_SPLIT],
-        });
+        add(tTypes.oBrace, "{", tab, objInfo.home);
+        tab++;
+        add(tTypes.iClass, ` ${objInfo.iClass}`, tab);
 
-        for(let tocItem of toc){
-            const key = tocItem.k;
-            const type = tocItem.type;
+        for(let infoItem of valInfo){
+            const key = infoItem.k;
+            const type = infoItem.type;
             const child = obj[key];
-            //console.log("objType", type, "childType", getType(child), "childKey", key)
+
+            add(tTypes.key, key, tab, true);
+            add(tTypes.conn, " = ", tab);
 
             switch(getType(child)){
                 case cType.o:
-                    tokens.push({
-                        type: tTypes.key,
-                        iLine: iLine,
-                        k: key,
-                        tab: tab + 1,
-                        endl: child[MM_SPLIT]
-                    });
-                    // console.log("o split", child[MM_SPLIT])
-                    // if(child[MM_SPLIT]){
-                    //     console.log("found split")
-                    //     iLine++;
-                    // }
                     parseObj(child);
                     break;
                 case cType.a:
-                    tokens.push({
-                        type: tTypes.key,
-                        iLine: iLine,
-                        k: key,
-                        tab: tab + 1,
-                        endl: child[0][MM_SPLIT]
-                    });
-                    // console.log("a split", child[0][MM_SPLIT])
-                    // if(child[0][MM_SPLIT]){
-                    //     console.log("found split")
-                    //     iLine++;
-                    // }
                     parseArr(child);
                     break;
-                case cType.p:                     
-                    tokens.push({
-                        type: type,
-                        iLine: iLine++,
-                        k: key,
-                        v: child,
-                        tab: tab + 1,
-                    });
+                case cType.p:   
+                    add(infoItem.type, child, tab);  
+                    add(tTypes.conn, ";", tab);                 
                     break;
             }
         }
 
-        tokens.push({
-            type: tTypes.cBrace,
-            v: "}",
-            tab: tab,
-            iLine: iLine++
-        });
+        tab--;
+        add(tTypes.cBrace, "}", tab, true);
     };
 
     const parseArr = (arr) => {
-        for(let i in arr){
-            const child = arr[i];
-            switch(getType(child)){
-                case cType.o:
-                    parseObj(child);
-                    break;
-                case cType.a:
-                    parseArr(child);// no real life cases 
-                    break;
-                case cType.p:
-                    tokens.push({
-                        //type: tTypes.plain,
-                        v: child,
-                        iLine: iLine++
-                    });
-            }
+        for(let child of arr){
+            parseObj(child);
         }
     };
 
-    const mergeSplits = () => {
-        for(let i = 0; i < tokens.length - 1; i++){
-            const t = tokens[i];
-            const tNext = tokens[i + 1];
-            if(
-                t.type === tTypes.key && t.iLine === tNext.iLine){
-                t.v = tNext.v;
-                t.type = tNext.type;
-                i++;
-                tokens[i] = null;
-            }
-            //t.comma = (tNext.type !== tTypes.cBrace && tNext.type !== tTypes.cBracket);
+    const init = () => {
+        if(metadata?.header){
+            add(tTypes.nqVal, metadata.header, 0, true);
         }
-        tokens = tokens.filter(x => x);
-    };
-    const setCommas = () => {
-        for(let i = 0; i < tokens.length; i++){
-            const t = tokens[i];
 
-            if(
-                t.type === tTypes.oBrace || 
-                t.type === tTypes.cBrace || 
-                t.type === tTypes.key
-            ){
-                t.comma = false;
-            }
-            else{
-                t.comma = true;
-            }
-        }
+        parseObj(jObject);
     };
 
-    parseObj(jObject);
-    mergeSplits();
-    setCommas();
+    init();
 
-    // mergeSplits();
-    // return newLineItr(lines);
     return {
         getTokens: () => tokens
     };
-};
 
-const newSBuild = (tokens, metadata) => {
+}
+
+const newSBuild = (tokens) => {
     const lines = [];
 
     const tab = (n) => {
         return (n > 0)? ' '.repeat(n * TAB) : "";
     }
 
-    const formatValue = (t) => {
-        return t.type === tTypes.qVal? `"${t.v}"` : t.v;
-    }
-
     const init = () => {
-        const header = metadata?.header;
-        if(header){
-            lines.push(header);
-        }
+        let currLine = null;
+
         for(let t of tokens){
-            const indent = tab(t.tab);
-            const k = t.k? `- ${t.k} = ` : "";
-            const v = (t.v || t.v === "")? `${formatValue(t)}` : "";
-            const comma = t.comma? ";" : "";
-            lines.push(`${indent}${k}${v}${comma}`)
+            let indent;
+            if(t.home){
+                if(currLine){
+                    lines.push(currLine.join(""));
+                }
+                currLine = [];
+                indent = tab(t.tab);
+            }
+            else{
+                indent = "";
+            }
+
+            const v = (t.type === tTypes.qVal)? `${Util.ensureQuotes(t.val)}` : t.val;
+            currLine.push(`${indent}${v}`)
+        }
+
+        if(currLine){
+            lines.push(currLine.join(""));
         }
     }
 
@@ -170,13 +150,11 @@ const newSBuild = (tokens, metadata) => {
 const JsonToSrcMain = (() => {
     const init = (jObject, subject, metadata) => {
         console.log("Run json to src");
-        // console.log(jObject)
-        // console.log(metadata)
-        const tokens = newSTranslate(jObject).getTokens();
-        const sBuild = newSBuild(tokens, metadata);
-        const sStr = sBuild.getStr();
-        //console.log(sBuild.getStr());
-        Stores[STORE_REGEN][subject].setMetadataAndText(metadata, sStr);
+        newListFix(jObject);
+        let tokens = newJsonToTokens(jObject, metadata).getTokens();
+        let lines = newSBuild(tokens).getLines();
+
+        Stores[STORE_REGEN][subject].setMetadataAndText(metadata, lines.join("\n"));
     };
 
     return {

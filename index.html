@@ -123,6 +123,7 @@
     <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="glob/enums.js"></script>
     <script src="glob/glob.js"></script>
     <script src="parser/util.js"></script>
     <script src="parser/tokener.js"></script>
@@ -130,6 +131,7 @@
     <script src="parser/jsonToSrc.js"></script>
     <script src="disp/disp.js"></script>
     <script src="diff/dispDiff.js"></script>
+    <script src="diff/objDiff.js"></script>
     <script src="diff/diff.js"></script>
     <script src="parser/fileitr.js"></script>
     <script src="forms/pref.js"></script>
@@ -166,11 +168,12 @@
                 //     const data = Stores[STORE_SOURCE][RIGHT].getData();
                 //     SrcToJsonMain.init(data.text, RIGHT, data.metadata);
                 // }
-                // if(Stores[STORE_JSON][LEFT].haveData()){
-                //     const data = Stores[STORE_JSON][LEFT].getData();
-                //     //console.log(data)
-                //     JsonToSrcMain.init(data.text, LEFT, data.metadata);
-                // }
+                if(Stores[STORE_JSON][LEFT].haveData() && Stores[STORE_JSON][RIGHT].haveData()){
+                    const dataL = Stores[STORE_JSON][LEFT].getData();
+                    const dataR = Stores[STORE_JSON][RIGHT].getData();
+                    //console.log(data)
+                    ObjDiffMain.init(dataL.text, dataR.text);
+                }
 
             }
             MainDisplay.showFilenames();
@@ -194,7 +197,7 @@
                 const div = document.getElementById('view' + i );
                 div.className = (i === v)? "activeView" : "hiddenView";
             }
-            console.log(v)
+            //console.log(v)
             switch (v){
                 case 1:
                     MainDisplay.showDiff();

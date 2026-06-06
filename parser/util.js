@@ -1,7 +1,5 @@
 
 
-const STR_ID = "MMQQ_"; // json value prefix: long strings kept in Metadata to rejoin later
-
 const TAB = 4;
 
 const Metadata = (() => {
@@ -58,102 +56,6 @@ const Util = (() => {
     };
 })();
 
-const newCharItr = (text) => {
-    let i = 0;
-    
-    return {
-        haveNext: () => i < text.length,
-        havePeek: () => i < text.length - 1,
-        inc: () => i++,
-        curr: () => text[i],
-        peek: () => text[i + 1],
-        currIndex: () => i
-    };
-};
-
-const newLineItr = (lines) => {
-    const disp = () => {
-        for(let line of lines){
-            debugLine(line);
-        }
-    }
-    
-    let i = 0;
-    
-    return {
-        haveNext: () => i < lines.length,
-        havePeek: () => i < lines.length - 1,
-        inc: () => i++,
-        curr: () => lines[i],
-        peek: () => lines[i + 1],
-        currIndex: () => i,
-        getLines: () => lines,
-        disp: () => disp()
-    };
-};
-
-const newLineObj = () => ({
-        text: "",       // raw text
-        k: "",          // parsed key and value
-        v: "",
-        iLine: 0,       // 0-index line in source file (display as 1-index)
-        tab: 0,         // actual indent in source file * 1/4
-        comma: false,   // format: add comma?
-        isSplit: false, // format: ignore tab and join with previous line?
-        type: lTypes.kv,
-        group: 0,       // for locating array pattern in object group
-        grpStart: false,
-        grpEnd: false,
-        oId: 0,         // object id for joining oBrace with cBrace
-        parent: 0,      // oId of parent   
-        children: [],   // oids of child objects
-        toc: [],        // list of non-internal fields for restoring orig order of fields
-    }
-);
-
-const debugLine = (line) => {
-    const hasValue = (v) => {
-        return(!!v || v === "0" || v === 0 || v === false);
-    }
-    let kv = "";
-    if(hasValue(line.v)){
-        if(hasValue(line.k)){
-            kv = ` ${line.k}=${line.v} `;
-        }
-        else{
-            kv = ` ""=${line.v} `;
-        }
-    }
-    else if(hasValue(line.k)){
-        kv = ` ${line.k}= `;
-    }
-
-    const text = line.text? ` ${line.text} `: "";
-
-    let grp = "";
-    if(line.grpStart){
-        grp = "grpStart:" + line.group;
-    }
-    else if(line.grpEnd){
-        grp = "grpEnd:" + line.group;
-    }
-    else if(line.group){
-        grp = "grp:" + line.group;
-    }
-    // if(!line.type){
-    //     console.error(line)
-    // }
-
-    let toc = "";
-    if(line.toc?.length){
-        toc = ` ${JSON.stringify(line.toc)} `;
-    }
-    const isSplit = line.isSplit? " isSplit " : "";
-
-    const oId = line.oId? ` oId=${line.oId} ` : "";
-    console.log(`${line.iLine + 1} ${line.type} tab:${line.tab}${text}${grp}${kv}${oId}${isSplit}${toc}`)
-}
-
 const debugOneTok = (t, ofInterest) => {  
     const buildValue = (t) => {
         const k = t.k? `- ${t.k} = ` : "";
@@ -171,13 +73,12 @@ const debugOneTok = (t, ofInterest) => {
             const split = t.split? ` split` : "";  
             const iClass = t.iClass? ` iClass:${t.iClass}` : ""; 
             const endl = t.endl? " endl" : ""; 
+            const subtype = t.subtype? ` ${t.subtype}` : "";// set but not used
             const comma = t.comma? " comma" : ""; 
-            const toc = t.toc?.length? ` toc:${JSON.stringify(t.toc)}` : "";
-            // if(tok.type === tTypes.oBrace || tok.type === tTypes.cBrace){
-            //     console.log(tok);
-            // }
-            //tok.home && console.log(`${tok.iLine + 1}:`);
-            console.log(`${t.iLine + 1} ${t.type}: ${val}${tab}${endl}${comma}${qid}${size}${oid}${split}${iClass}${toc}`);
+            const valInfo = t.valInfo?.length? ` valInfo:${JSON.stringify(t.valInfo)}` : "";
+            console.log(
+                `${t.iLine + 1} ${t.type}: ${val}${tab}${endl}${comma}${qid}${size}${oid}${split}${iClass}${subtype}${valInfo}`
+            );
         }
     }
     else{

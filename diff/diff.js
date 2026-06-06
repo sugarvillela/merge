@@ -1,30 +1,31 @@
-const mTypes = {// match types
-    none: 0,
-    L: 1,
-    R: 2,
-    all: 3,
-    exact: 4
-};
-
-const newPathObj = (parent, tocItem, val, pStr, pArr) => {
+const newPathObj = (parent, infoItem, val, pStr, pArr) => {
     const toString = () => {
         const path = (pStr)? ` ${pStr}: ` : "";
-        return `${tocItem.iLine + 1}: ${path}${val} (${tocItem.type})`;
+        return `${infoItem.iLine + 1}: ${path}${val} (${infoItem.type})`;
     };
     const toStringShort = () => {
         const path = (pStr)? ` ${pStr}: ` : "";
         return `${path}: ${val}`;
     };
     const splitMLQ = () => {
-        if(tocItem.type === tTypes.mlq && tocItem.qSize){
+        if(infoItem.type === tTypes.qVal){
             const lines = val.split(/\r?\n/);
-            console.log("lines", lines)
-            const lineObjs = lines.map(lineVal => newPathObj(
-                parent, tocItem, lineVal, pStr, pArr
+
+            const subtypes = lines.length === 1? [subtypes.only] : lines.map((l, i) => {
+                if(i === 0){
+                    return subtypes.first;
+                }
+                else if(i === lines.length - 1){
+                    return subtypes.last;
+                }
+                else { 
+                    return subtypes.mid;
+                }
+            });
+
+            return lines.map((l, i) => newPathObj(
+                parent, {...infoItem, subtype: subtypes[i]}, l, pStr, pArr
             ));
-            lineObjs[0].setValueType(tTypes.mlqFirst);
-            lineObjs[lineObjs.length - 1].setValueType(tTypes.mlqLast);
-            return lineObjs;
         }
         return null;
     }
@@ -33,15 +34,16 @@ const newPathObj = (parent, tocItem, val, pStr, pArr) => {
         getPathStr: () => pStr,
         getPathArr: () => pArr,
         getValue: () => val,
-        getValueType: () => tocItem.type,
+        getValueType: () => infoItem.type,
         setValueType: (newType) => type = newType,
+        showPath: () => infoItem.type !== tTypes.qVal || infoItem.subtype === subtypes.only || infoItem.subtype === subtypes.first,
+        getSubtype: () => infoItem.subtype, // undefined for all but qVal
         splitMLQ: splitMLQ,
         toString: toString,
         toStringShort: toStringShort
     };
 }
 const newDiffObj = (pathObjL, pathObjR) => {
-    //console.log(pathObjL?.getPathArr(), pathObjR?.getPathArr())
     const pathObjs = [pathObjL, pathObjR];
     const reports = [null, null];
     let mType = 0; 
@@ -132,6 +134,8 @@ const newDiffObj = (pathObjL, pathObjR) => {
         // ensure mType = all
         getValue: (subject) => pathObjs[subject].getValue(),
         getValueType: (subject) => pathObjs[subject].getValueType(),
+        showPath: (subject) => pathObjs[subject]?.showPath(),
+        getSubtype: (subject) => pathObjs[subject]?.getSubtype(),
         toStringShort: toStringShort,
         disp: disp,
         setPathObj: (subject, pathObj) => {
@@ -162,21 +166,21 @@ const newFlattener = (jObject, subject) => {
         }
     }
 
-    const saveLeafInfo = (parent, tocItem, val) => {
+    const saveLeafInfo = (parent, infoItem, val) => {
         const pStr = currPath.join(PATH_JOIN);
         //const h = hash32(pathStr);
         pathList.push(pStr);
         
-        paths[pStr] = newPathObj(parent, tocItem, val, pStr, [...currPath]);
+        paths[pStr] = newPathObj(parent, infoItem, val, pStr, [...currPath]);
         currPath.splice(tab);
     }
     
     const parseObj = (parent) => {
-        const toc = parent[MM_TOC];
+        const valInfo = parent[keys.valInfo];
 
-        for(let tocItem of toc){
-            const key = tocItem.k;
-            const type = tocItem.type;
+        for(let infoItem of valInfo){
+            const key = infoItem.k;
+            const type = infoItem.type;
             const child = parent[key];
             
             currPath.push(key);
@@ -197,7 +201,7 @@ const newFlattener = (jObject, subject) => {
                     break;
                     
                 case cType.p:                    
-                    saveLeafInfo(parent, tocItem, child);
+                    saveLeafInfo(parent, infoItem, child);
                     break;
             }
         }
@@ -438,7 +442,6 @@ const newDiff_2 = (props) => {
     }
 
     const setValueMatch = () => {
-        //console.log("setValueMatch")
         for(let d of diffs){
             if( d.getMType() === mTypes.all ){
                 d.setValueMatch(d.getValue(LEFT) === d.getValue(RIGHT));
@@ -452,7 +455,6 @@ const newDiff_2 = (props) => {
             const left = diffL[i]? pathsL[diffL[i]].toStringShort() : "---"
             const right = diffR[i]? pathsR[diffR[i]].toStringShort() : "---"
             console.log(`${left} | ${right}`);
-            //console.log(`${diffL[i]} | ${diffR[i]}`);
         }
     }
 
@@ -487,7 +489,6 @@ const newDiff_3 = (props) => {
     const splitMLQ = () => {
         const dest = [];
         let newDiffs;
-        //console.log("setValueMatch")
         for(let i = 0; i < diffs.length; i++){
             const d = diffs[i];
             if( d.getMType() === mTypes.exact && (newDiffs = d.splitMLQ())){
@@ -505,7 +506,6 @@ const newDiff_3 = (props) => {
     }
 
     const genReports = () => {
-        //console.log("setValueMatch")
         for(let d of diffs){
             d.genReports();
         }
@@ -525,9 +525,7 @@ const newDiff_3 = (props) => {
 
 const DiffMain = (() => {
     const init = (objL, objR) => {
-        console.log("Run diff")
         const flatL = newFlattener(objL, LEFT);
-        //flatL.disp();
         const flatR = newFlattener(objR, RIGHT);
 
         const props1 = {flatteners: [flatL, flatR], objs:[objL, objR]};

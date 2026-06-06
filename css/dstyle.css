@@ -53,6 +53,13 @@ pre {
     border: none;
     display: inline;
 }
+.charGuidVal{
+    color: darkgoldenrod;
+    background-color: inherit;
+    min-width: 0;
+    border: none;
+    display: inline;
+}
 .charNQVal{
     color: #bfa3a3;
     background-color: inherit;

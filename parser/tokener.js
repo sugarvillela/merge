@@ -1,32 +1,59 @@
+const newLineItr = (lines) => {
+    const disp = () => {
+        for(let line of lines){
+        }
+    }
+    
+    let i = 0;
+    
+    return {
+        haveNext: () => i < lines.length,
+        havePeek: () => i < lines.length - 1,
+        inc: () => i++,
+        curr: () => lines[i],
+        peek: () => lines[i + 1],
+        currIndex: () => i,
+        getLines: () => lines,
+        disp: () => disp()
+    };
+};
+
 const newTokenAcc = (lineItr) => {
     let oToks = [];
+
+    const add = (type, val, home = undefined) => {
+        oToks.push({home: home, iLine: lineItr.currIndex(), type: type, val: val, trim: val.trim()});
+    }
+
+    const addQ = (val, subtype, home = undefined) => {
+        oToks.push({home: home, iLine: lineItr.currIndex(), type: tTypes.qVal, val: val, trim: val.trim(), subtype: subtype});
+    }
 
     const endl = {iLine: 0, type: tTypes.endl, val: ""};
     const addEndl = () => oToks.push(endl);
 
     const add4 = (m, type) => {
-        const iLine = lineItr.currIndex();
-        oToks.push({home: true, iLine: iLine, type: tTypes.key, val: m[1]});
-        oToks.push({iLine: iLine, type: tTypes.conn, val: m[2]});
+        add(tTypes.key, m[1], true);
+        add(tTypes.conn, m[2]);
         if(m.length > 3 && m[3]){
-            oToks.push({iLine: iLine, type: type, val: m[3]});
+            add(type, m[3]);
         }
         if(m.length > 4 && m[4]){
-            oToks.push({iLine: iLine, type: tTypes.conn, val: m[4]});
+            add(tTypes.conn, m[4]);
         }
         addEndl();
     };
+
     const add2 = (m, type) => {
-        const iLine = lineItr.currIndex();
-        oToks.push({home: true, iLine: iLine, type: type, val: m[1]});
+        add(type, m[1], true);
         if(m.length > 2 && m[2]){
-            oToks.push({iLine: iLine, type: tTypes.conn, val: m[2]});
+            add(tTypes.conn, m[2]);
         }
         addEndl();
     }
+
     const addUnk = (line) => {
-        const iLine = lineItr.currIndex();
-        oToks.push({home: true, iLine: iLine, type: tTypes.unk, val: line});
+        add(tTypes.unk, line, true);
         addEndl();
     }
 
@@ -35,6 +62,8 @@ const newTokenAcc = (lineItr) => {
     };
 
     return {
+        add: add,       // add directly to list, includes iLine
+        addQ: addQ,     // same as add, plus subtype for quoted val
         add4: add4, 
         add2: add2,
         addUnk: addUnk,
@@ -94,6 +123,7 @@ const newMultiLineQuoteParse = (lineItr, tokenAcc) => {
     const escChar = "\\";
     let qCount = 0;
     let currUq = 0;
+    let subtype = subtypes.first;
 
     const countQuotes = (line) => {
         let esc = false;
@@ -115,15 +145,16 @@ const newMultiLineQuoteParse = (lineItr, tokenAcc) => {
 
     const balanced = () => qCount && (qCount % 2 === 0);
 
-    const tryEndQuote = (val, home, iLine) => {
+    const tryEndQuote = (val, home) => {
         let m;
         if(balanced() && (m = val.match(rEndStr))){// found end quote
-            tokenAcc.push( {home: home, iLine: iLine, type: tTypes.qVal, val: m[1], qid: currUq} );
-            tokenAcc.push( {iLine: iLine, type: tTypes.conn, val: m[2]} );
+            subtype = (subtype === subtypes.first)? subtypes.only : subtypes.last;
+            tokenAcc.addQ(m[1], subtype, home);
+            tokenAcc.add(tTypes.conn, m[2]);
             qCount = 0;
         }
         else{// still in multi-line quote
-            tokenAcc.push( {home: home, iLine: iLine, type: tTypes.qVal, val: val, qid: currUq} );
+            tokenAcc.addQ(val, subtype, home);
         }
         
         tokenAcc.addEndl();
@@ -132,30 +163,31 @@ const newMultiLineQuoteParse = (lineItr, tokenAcc) => {
     const addKeyEquals = (line) => {
         const m = line.match(rKeyEq);
         if(m){
-            const iLine = lineItr.currIndex();
-            tokenAcc.push( {home: true, iLine: iLine, type: tTypes.key, val: m[1]} );
-            tokenAcc.push( {iLine: iLine, type: tTypes.conn, val: m[2]} );
+            tokenAcc.add(tTypes.key, m[1], true);
+            tokenAcc.add(tTypes.conn, m[2]);
             return m[1].length + m[2].length;
         }
         return 0;
     }
 
     const handleQuote = (line) => {
-        const iLine = lineItr.currIndex();
+        
         if(qCount > 0){// subsequent line in multi-line quote
+            subtype = subtypes.mid;
             qCount += countQuotes(line);
-            tryEndQuote(line, true, iLine);
+            tryEndQuote(line, true);
 
             return true;
         }
         if((qCount = countQuotes(line)) > 0){// initial line in multi-line quote
+            subtype = subtypes.first;
             currUq = Uq.next();
             const keyEqLen = addKeyEquals(line);
             if(keyEqLen){
-                tryEndQuote(line.substring(keyEqLen), false, iLine);
+                tryEndQuote(line.substring(keyEqLen), false);
             }
             else{
-                tryEndQuote(line, true, iLine);
+                tryEndQuote(line, true);
             }
 
             return true;
@@ -193,13 +225,14 @@ const newSourceTokener = (sourceText) => {
         {r: /^([^=]+)([ ]?=[ ]?)([\{] )(I\w+)$/, f: (m) => addKeyEqualsIClass(m)},  // val = { IClassName
         {r: /^([ ]*[\{] )(I\w+)$/, f: (m) => addIClass(m)},                         // { IclassName
         {r: /^([ ]*[\}])(;?)$/, f: (m) => tokenAcc.add2(m, tTypes.cBrace)},         // }
-        {r: /^([^=]+)([ ]?=[ ]?)$/, f: (m) => tokenAcc.add4(m, undefined)},         // 
-        {r: /^([^=]+)([ ]?=[ ]?)([\{\[])$/, f: (m) => tokenAcc.add4(m, tTypes.oBrace)},
-        {r: /^([^=]+)([ ]?=[ ]?)([\{\[][ ]*[\}\]])(;?)$/, f: (m) => tokenAcc.add4(m, tTypes.ocBrace)},
-        {r: /^([^=]+)([ ]?=[ ]?)(\-?[\.\d]+)(;?)$/, f: (m) => tokenAcc.add4(m, tTypes.numVal)},
-        {r: /^([^=]+)([ ]?=[ ]?)([^";]+)(;?)$/, f: (m) => tokenAcc.add4(m, tTypes.nqVal)},
-        {r: /^([^=]+)([ ]?=[ ]?)("(?:[^"\\]|\\.)*")(;?)$/, f: (m) => tokenAcc.add4(m, tTypes.qVal)},
-        {r: /^([ ]*"(?:[^"\\]|\\.)*")(;?)$/, f: (m) => tokenAcc.add2(m, tTypes.qVal)}
+        {r: /^([^=]+)([ ]?=[ ]?)$/, f: (m) => tokenAcc.add4(m, undefined)},         // key = 
+        {r: /^([^=]+)([ ]?=[ ]?)([\{\[])$/, f: (m) => tokenAcc.add4(m, tTypes.oBrace)},                 // key = { IClassName
+        {r: /^([^=]+)([ ]?=[ ]?)([\{\[][ ]*[\}\]])(;?)$/, f: (m) => tokenAcc.add4(m, tTypes.ocBrace)},  // key = {};
+        {r: /^([^=]+)([ ]?=[ ]?)(\-?[\.\d]+)(;?)$/, f: (m) => tokenAcc.add4(m, tTypes.numVal)},         // key = -2.17;
+        {r: /^([^=]+)([ ]?=[ ]?)(GUID[^;]+)(;?)$/, f: (m) => tokenAcc.add4(m, tTypes.guid)},          // key = GUID 1234;
+        {r: /^([^=]+)([ ]?=[ ]?)([^";]+)(;?)$/, f: (m) => tokenAcc.add4(m, tTypes.nqVal)},              // key = unquoted;
+        {r: /^([^=]+)([ ]?=[ ]?)("(?:[^"\\]|\\.)*")(;?)$/, f: (m) => tokenAcc.add4(m, tTypes.qVal)},    // key = "quoted";
+        {r: /^([ ]*"(?:[^"\\]|\\.)*")(;?)$/, f: (m) => tokenAcc.add2(m, tTypes.qVal)}// "quoted";
     ];
 
     const init = () => {
@@ -221,7 +254,6 @@ const newSourceTokener = (sourceText) => {
                     }
                 }
                 if(!matched){
-                    //console.log("unk", line)
                     tokenAcc.addUnk(line)
                 }
             }

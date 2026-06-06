@@ -1,10 +1,8 @@
 const NAMESPACE = "MM_";// json key prefix: internal use, formatting, classnames etc.
 
-const MM_CLASS = "MM_ICLASS";   // classname after {
+const MM_LIST = "MM_LIST"; // classname after {, iLine start, iLine end
 const MM_TAB = "MM_TAB";        // placement on reconstruct
 const MM_SPLIT = "MM_SPLIT";    // if true, ignore tab on reconstruct
-const MM_TOC = "MM_TOC";        // list of object keys, in order
-const MM_OID = "MM_OID";        // unique id for each object
 const MM_PARENT = "MM_PARENT";  // parent id for child object, undefined if root
 const MM_CHILDREN = "MM_CHILDREN";// list of child ids for parent object
 
@@ -22,32 +20,14 @@ const RIGHT = 1;
 const StoreNames = ["src", "json", "regen"];
 const SubjectNames = ["left", "right"];
 
-const lTypes = {// line types
-    kv: "kv",           // key val
-    kvnq: "kvnq",       // key val no quotes
-    kvnum: "kvnum",     // key val number
-    mlq: "mlq",         // multi-line quote
-    oBrace: "{",
-    cBrace: "}",
-    oBracket: "[",
-    cBracket: "]",
-    split: "split",     // key object
-    sublist: "sublist", // table of contents, children
-    iClass: "iClass",
-    plain: "plain"      // plain text for header
-};
-
-const cType = {// common types
-    o: "o", // object
-    a: "a", // array
-    p: "p"  // primitive
-};
-
 const getType = (obj) => {
+    if(obj === null){
+        return cType.n;
+    }
     if(Array.isArray(obj)){
         return cType.a;
     }
-    if(typeof obj === 'object' && obj !== null){
+    if(typeof obj === 'object'){
         return cType.o;
     }
     return cType.p;

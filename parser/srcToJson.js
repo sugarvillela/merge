@@ -1,12 +1,16 @@
 
 
 const newTokClean = (tokens) => {
-    const mergeClassNames = () => {
+    const mergeObjInfo = () => {
         for(let i = 0; i < tokens.length - 1; i++){
             const t = tokens[i];
             const tNext = tokens[i + 1];
             if(t.type === tTypes.oBrace && tNext.type === tTypes.iClass){
-                t.iClass = tNext.val;
+                t[keys.objInfo] = {
+                    iClass: tNext.val,
+                    home: !!t.home,
+                    range: {iStart: t.iLine, iEnd: -1}
+                };
             }
         }
         tokens = tokens.filter(
@@ -18,6 +22,7 @@ const newTokClean = (tokens) => {
         tokens.forEach((t) => {
             switch(t.type){
                 case tTypes.nqVal:
+                case tTypes.guid:
                     t.val = Util.ensureQuotes(t.val);
                     break;
                 case tTypes.conn:
@@ -47,26 +52,20 @@ const newTokClean = (tokens) => {
 
     const markSplits = () => {
         const objPattern = [tTypes.conn, tTypes.endl, tTypes.oBrace];
-        const arrPattern = [tTypes.conn, tTypes.endl, tTypes.oBracket, tTypes.oBrace];
 
         const findPattern = (pattern, i) => {
-            //console.log(pattern)
             let t = null;
             for(let j = i, k = 0; j < tokens.length && k < pattern.length; j++, k++){
                 t = tokens[j];
-                //console.log(t?.iLine, "loop", t?.type, "pattern", pattern[k])
                 if(t.type !== pattern[k]){
-                    //console.log(t?.iLine, "null", t?.type, "pattern", pattern[k])
                     return null;
                 }
             }
-            //console.log(t?.iLine, "finish", t?.type)
             return t?.type === tTypes.oBrace? t : null;
         }
 
         for(let i = 0; i < tokens.length; i++){
             if(tokens[i].type === tTypes.conn){
-                //debugOneTok(tokens[i])
                 let t = null;
                 if(
                     (t = findPattern(objPattern, i))// || (t = findPattern(arrPattern, i))
@@ -77,7 +76,7 @@ const newTokClean = (tokens) => {
             }
         }
         tokens = tokens.filter(
-            (t) => t.type !== tTypes.endl && t.type !== tTypes.iClass
+            (t) => t.type !== tTypes.endl
         );
     };
 
@@ -92,7 +91,8 @@ const newTokClean = (tokens) => {
             Metadata.setHeader(tokens[0].val.trim());
             tokens.shift();
         }
-        mergeClassNames();
+
+        mergeObjInfo();
         trimAll();
         fixConns();
         killSemicolons();
@@ -113,58 +113,47 @@ const newTokClean = (tokens) => {
 }
 
 const newMlqMerge = (tokens) => {
-    const map = {};
-
-    const add = () => {
-        for(t of tokens){
-            if(t.type === tTypes.qVal){
-                let qList = map[t.qid] || (map[t.qid] = []);
-                qList.push(t);
-            }
-        }
-    };
-
     const merge = () => {
+        let first = null;
+        let values = [];
+
         for(let i = 0; i < tokens.length - 1; i++){
             const t = tokens[i];
 
             if(t.type === tTypes.qVal){
-                const qList = map[t.qid];
-                if(qList){
-                    if(qList.length > 1){
-                        const values = qList.map(qt => qt.val);
-                        t.size = values.length;
-                        t.val = JSON.stringify(
-                            Util.trimQuotes(
-                                values.join("\n")
-                            )
-                        );
-                        t.type = tTypes.mlq;
-                        //t.val = values.join("\n");
-                        //console.log("a merge:", t.val)
-                        map[t.qid] = null; // prevent duplicate merges
-                    }
-                    else if(t.val !== '""'){
+                switch(t.subtype){
+                    case subtypes.only:
                         t.val = JSON.stringify(
                             Util.trimQuotes(
                                 t.val
                             )
                         );
-                        //console.log("b merge:", t.val)
-                        t.size = 1;
-                    }
-                }
-                else{
-                    tokens[i] = null; // remove quote tokens, only keep merged token
+                        break;
+                    case subtypes.first:
+                        first = t;
+                        values = [t.val];
+                        break;
+                    case subtypes.mid:
+                        values.push(t.val);
+                        tokens[i] = null; // remove quote tokens, only keep merged token
+                        break;
+                    case subtypes.last:
+                        values.push(t.val);
+                        first.val = JSON.stringify(
+                            Util.trimQuotes(
+                                values.join("\n")
+                            )
+                        );
+                        tokens[i] = null; // remove quote tokens, only keep merged token
+                        first = null;
                 }
             }
         }
 
-        tokens = tokens.filter(t => t); // remove nulls
+        tokens = tokens.filter(t => !!t); // remove nulls
     };
 
     const init = () => {
-        add();
         merge();
     }
 
@@ -176,15 +165,12 @@ const newMlqMerge = (tokens) => {
 };
 
 const newTabOps = (tokens) => {
-    const ocMap = {};
-    const coMap = {};
     let maxTab = 0;
 
     const setTabs = () => {
         let tab = 0;
         for(let t of tokens){
             if(t.type === tTypes.oBrace){
-                t.oid = Uq.next();
                 t.tab = tab;
                 tab++;
                 maxTab = Math.max(maxTab, tab);
@@ -201,66 +187,165 @@ const newTabOps = (tokens) => {
 
     const linkOpenClose = () => {
         for(let tab = 0; tab <= maxTab; tab++){
-            let oid = 0;
+            let oBrace = null;
             for(let i = 0; i < tokens.length; i++){
                 const t = tokens[i];
                 if(t.tab === tab){
                     if(t.type === tTypes.oBrace){
-                        oid = t.oid;
-                        coMap[oid] = t;
+                        oBrace = t;
                     }
                     else if(t.type === tTypes.cBrace){
-                        if(oid){
-                            t.oid = oid;
-                            ocMap[oid] = t;
-                            oid = 0;
+                        if(oBrace){
+                            oBrace[keys.objInfo].range.iEnd = t.iLine;
+                            oBrace = null;
                         }
                         else{
                             console.error(t);
-                            //throw new Error("unmatched closing brace at line ", t.iLine + 1);
+                            throw new Error("unmatched closing brace at line ", t.iLine + 1);
                         }
                     }
                 }
             }
         }
-        //console.log("ocMap", ocMap);
-        //console.log("coMap", coMap);
     };
 
-    const scrapeInfo = () => {
-        const addTocItem = (toc, keyTok, valTok) => {
-            const qSize = (valTok.size && valTok.size > 1)? `,"qSize":${valTok.size}` : "";
-            toc.push(JSON.parse(`{"k":${keyTok.val},"type":"${valTok.type}","iLine":${keyTok.iLine}${qSize}}`));
-            //toc.push(JSON.parse(`{"k":"someVal","type":"someType","iLine":23}`));
-        };
-        for(let tab = 1; tab <= maxTab; tab++){
-            let toc = [];// table of contents for current tab level, reset at each new object at tab-1 level
-            for(let i = 0; i < tokens.length; i++){
+    const findListPattern = () => {
+        for(let tab = 0; tab <= maxTab; tab++){
+            let oBrace = null;
+
+            for(let i = 0; i < tokens.length - 1; i++){
                 const t = tokens[i];
-                if(t.type === tTypes.oBrace){
-                    if(t.tab === tab - 1){
-                        //console.log(t.iLine, ": oBrace:", t.tab, t.oid, JSON.stringify(toc));
-                        toc = []; // reset toc for new object
+                const tNext = tokens[i + 1];
+
+                if(t.tab === tab){
+                    if(t.type === tTypes.oBrace){
+                        oBrace = t;
+                    }
+                    else if(t.type === tTypes.cBrace){
+                        if(tNext.tab === tab){
+                            if(tNext.type === tTypes.oBrace){
+                                oBrace.subtype = (oBrace.subtype)? subtypes.mid : subtypes.first;
+                                tNext.subtype = subtypes.mid;
+                            }
+
+                        }
+                        else if(oBrace.subtype){
+                            t.subtype = subtypes.last;
+                            oBrace = null;
+                        }
                     }
                 }
-                else if(t.type === tTypes.cBrace){
-                    if(t.tab === tab - 1){
-                        coMap[t.oid].toc = [...toc];
+            }
+        }
+    }
+
+    const findUqKeys = () => {
+        for(let tab = 1; tab <= maxTab; tab++){
+            let oBrace = null;
+            for(let i = 0; i < tokens.length - 1; i++){
+                const t = tokens[i];
+                if(t.tab === tab - 1){
+                    if(t.type === tTypes.oBrace && t.subtype){
+                        oBrace = t;
+                        //console.log((t.iLine+1), `a oBrace <= t, oBrace.subtype = ${oBrace.subtype}`)
+                    }
+                    else if(t.type === tTypes.oBrace){
+                       // console.log((t.iLine+1), `b oBrace <= null`)
+                        oBrace = null;
+                    }
+                }
+                else if(t.tab === tab && oBrace){
+                    if(t.type === tTypes.guid){
+                        //console.log((t.iLine+1), `c found guid ${t.val} for oBrace at line ${oBrace.iLine + 1}`);
+                        oBrace.guid = t.val;
+                    }
+                }
+            }
+        }
+    }
+
+    const applyListPattern = () => {
+        const dest = [];
+
+        const addListStart = (t) => {// t is oBrace
+            // leave info off of added list braces
+            dest.push({...t, [keys.objInfo]: null});
+        }
+        const addListItem = (t) => {// t is oBrace\
+            const guid = t.guid.replace(/[-\s]/g, "_");
+            dest.push({...t, type: tTypes.key, val: guid});
+            dest.push({...t, type: tTypes.conn, val: ":", home: false});
+            dest.push({...t, home: false});
+        }
+        const addListEnd = (t) => {// t is cBrace
+            dest.push({...t});
+        }
+        
+        for(i = 0; i < tokens.length; i++){
+            const t = tokens[i];
+            if(t.subtype && (t.type === tTypes.oBrace || t.type === tTypes.cBrace)){
+                switch (t.subtype){
+                    case subtypes.first:
+                        addListStart(t);
+                        addListItem(t);
+                        break;
+                    case subtypes.mid:
+                        addListItem(t);
+                        break;
+                    case subtypes.last:
+                        dest.push(t);
+                        addListEnd(t);
+                        break;
+                }
+            }
+            else {
+                dest.push(t);
+            }
+
+        }
+
+        tokens = dest;
+    }
+
+    const scrapeInfo = () => {
+        const addInfoItem = (valInfo, tKey, tVal) => {
+            const infoItem = {
+                k: Util.trimQuotes(tKey.val),
+                t: tVal.type,
+                i: tKey.iLine
+            };
+
+            valInfo.push(infoItem);
+        };
+
+        for(let tab = 1; tab <= maxTab; tab++){
+            let valInfo = [];// table of contents for current tab level, reset at each new object at tab-1 level
+            let oBrace = null;
+            for(let i = 0; i < tokens.length; i++){
+                const t = tokens[i];
+
+                if(t.tab === tab - 1){
+                    if(t.type === tTypes.oBrace){
+                        oBrace = t;
+                        valInfo = []; // reset valInfo for new object
+                    }
+                    else if(t.type === tTypes.cBrace){
+                       oBrace[keys.valInfo] = [...valInfo];
                     }
                 }
                 else if(t.tab === tab && t.type === tTypes.key) {
-                    addTocItem(toc, t, tokens[i + 2]);
+                    addInfoItem(valInfo, t, tokens[i + 2]);
                 }
             }
             //break;
         }
     };
 
-    const addInfoLines = () => {// adds TOC and oid
+    const addInfoLines = () => {// adds TOC
         const dest = [];
 
         const add = (t, type, k, v) => {
-            dest.push({home: true, iLine: t.iLine, type: tTypes.key, val: `"${k}"`});
+            dest.push({home: true, iLine: t.iLine, type: tTypes.key, val: `${Util.ensureQuotes(k)}`});
             dest.push({iLine: t.iLine, type: tTypes.conn, val: ":"});
             dest.push({iLine: t.iLine, type: type, val: v});
         };
@@ -269,76 +354,16 @@ const newTabOps = (tokens) => {
             const t = tokens[i];
             dest.push(t);
             if(t.type === tTypes.oBrace){
-                add(t, tTypes.nqVal, MM_TOC, JSON.stringify(t.toc));
-                add(t, tTypes.qVal, MM_CLASS, `"${t.iClass}"`);
-                add(t, tTypes.numVal, MM_TAB, `${t.tab}`);
-                add(t, tTypes.nqVal, MM_SPLIT, t.split? "true" : "false");
-            }
-        }
-        tokens = dest;
-    }
-
-    const findLists = () => {
-        for(let tab = 0; tab <= maxTab; tab++){
-            for(let i = 0; i < tokens.length - 1; i++){
-                const t = tokens[i];
-                const tNext = tokens[i + 1];
-                if(t.tab === tab && t.type === tTypes.cBrace){
-                    if( 
-                        tNext.tab === tab && 
-                        tNext.type === tTypes.oBrace 
-                    ){
-                        const group = Uq.next();
-                        t.group = group;
-                        tNext.group = group;
-
-                        t.comma = true;
-
-                        const oTok = coMap[t.oid];
-                        if(!oTok.group){
-                            oTok.group = group;
-                            oTok.grpStart = true;
-                        }
-
-                        const cTok = ocMap[tNext.oid];
-                        cTok.group = group;
-                    }
-                    else if(t.group){
-                        t.grpEnd = true;
-                    }
+                if(t[keys.objInfo]){
+                    add(t, tTypes.nqVal, keys.objInfo, JSON.stringify(t[keys.objInfo]));
+                }
+                if(t[keys.valInfo]){
+                    add(t, tTypes.nqVal, keys.valInfo, JSON.stringify(t[keys.valInfo]));
                 }
             }
         }
-    }
-
-    const addBrackets = () => {
-        const dest = [];
-        for(let t of tokens){
-            if(t.grpStart){
-                dest.push({
-                    val: "[",
-                    type: tTypes.oBracket,
-                    iLine: t.iLine,
-                    tab: -1
-                });
-                dest.push(t);
-            }
-            else if(t.grpEnd){
-                dest.push(t);
-                dest.push({
-                    val: "]",
-                    type: tTypes.cBracket,
-                    iLine: t.iLine,
-                    tab: -1
-                });
-            }
-            else{
-                dest.push(t);
-            }
-        }
-
         tokens = dest;
-    };
+    }
 
     const addCommas = () => {
         const dest = [];
@@ -369,10 +394,13 @@ const newTabOps = (tokens) => {
     const init = () => {
         setTabs();
         linkOpenClose();
+        findListPattern();
+        findUqKeys();
+        applyListPattern();
+        setTabs();// reset tabs after list pattern changes
+
         scrapeInfo();
-        findLists();
         addInfoLines();
-        addBrackets();
         addCommas();
     }
     init();
@@ -391,6 +419,24 @@ const newJBuild = (tokens) => {
 
     const buildJson = () => {
         jList = tokens.map(t => t.val);
+    }
+
+    const debugJson = () => {
+        const dest = [];
+        let line;
+        for(let t of tokens){
+            if(t.home){
+                if(line){
+                    dest.push(line.join(""));
+                }
+                line = [];
+            }
+            line.push(t.val);
+        }
+        if(line){
+            dest.push(line.join(""));
+        }
+        console.log(dest.join("\n"));
     }
 
     const buildJobj = () => {
@@ -414,7 +460,7 @@ const newJBuild = (tokens) => {
             else{
                 alert(`${errStr}\nSee console for debug info`);
             }
-            //debugJson();
+            debugJson();
         }
     }
 
@@ -426,7 +472,7 @@ const newJBuild = (tokens) => {
     init();
 
     return {
-        debugJson: () => console.log(jList.join("")),
+        debugJson: debugJson,
         getJson: () => jList.join(""),
         getJObj: () => jObj,
         getToks: () => tokens
@@ -438,7 +484,6 @@ const SrcToJsonMain = (() => {
         console.log("Run src to json");
         Metadata.clear();
         Metadata.setFileMetadata(fileMetadata);
-        //console.log(sourceText);
         const tokener = newSourceTokener(sourceText);
         //tokener.debugToks();
         let toks = tokener.getToks();

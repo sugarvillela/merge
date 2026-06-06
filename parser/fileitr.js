@@ -72,13 +72,6 @@ const storeStatus = () => {
 
     }
 };
-// const StoreSrc1 = getStore("mm:src1");
-// const StoreSrc2 = getStore("mm:src2");
-
-// const StoreJson1 = getStore("mm:json1");
-// const StoreJson2 = getStore("mm:json2");
-
-// const StoreRegen = getStore("mm:regen");
 
 const getFileReader = (store, subject, f) => {
     const allowedTypes = [".cls", ".sbs"];
@@ -114,10 +107,8 @@ const getFileReader = (store, subject, f) => {
 
                 Stores[store][subject].setMetadataAndText(metadata, text); // Store the file content in local storage
                 
-                // const filename = file.name;
                 console.log(`Name: ${name}, Size: ${file.size} bytes`);
                 f(text, subject, metadata);     // Pass the file content to the designated Parser
-                //console.log(event);
             };
             reader.readAsText(file); 
         }
@@ -130,10 +121,6 @@ const getFileReader = (store, subject, f) => {
         init: (file) => init(file)
     };
 };
-
-// const FileSource1 = (() => {
-//     return getFileItr(StoreSrc1, ToJsonMain.init);
-// })();
 
 const Files = [
     [getFileReader(STORE_SOURCE, LEFT, SrcToJsonMain.init), getFileReader(STORE_SOURCE, RIGHT, SrcToJsonMain.init)]

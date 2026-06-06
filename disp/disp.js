@@ -1,21 +1,4 @@
-const tTypes = {
-    oBrace: "oBrace",   // {[
-    cBrace: "cBrace",   // }]
-    oBracket: "oBracket",   // [ used when specificity is needed to distinguish from { in source file
-    cBracket: "cBracket",   // ]
-    ocBrace: "ocBrace", // special case [] {}
-    key: "key",         // key in kv pair
-    numVal: "numVal",   // number value in kv pair
-    qVal: "qVal",       // quoted string value in kv pair
-    nqVal: "nqVal",     // non-quoted string value in kv pair
-    mlq: "mlq",         // multi-line quoted value
-    mlqFirst: "mlqFirst",// multi-line quoted value first (show path and start quote)
-    mlqLast: "mlqLast", // multi-line quoted value last (add end quote)
-    conn: "conn",       // connector: colon, comma, = 
-    unk: "unk",
-    endl: "endl",
-    iClass: "iClass"    // class name after { in source file, for reconstructing with correct spacing
-}
+
 
 const newLineNumRender = (toks, parent, showLineNum) => {
     let maxWidth = 0;
@@ -86,6 +69,8 @@ const mapColor = (type) => {
             return "charNumVal";
         case tTypes.qVal:
             return "charQVal";
+        case tTypes.guid:
+            return "charGuidVal";
         case tTypes.nqVal:
         case tTypes.unk:
             return "charNQVal";
@@ -150,7 +135,6 @@ const newSourceDisp = () => {
             if(Stores[STORE_SOURCE][i].haveData()){
                 const data = Stores[STORE_SOURCE][i].getData();
                 const sourceText = data.text;
-                //console.log(sourceText)
                 const tokener = newSourceTokener(sourceText);
                 //tokener.debugToks();
                 const toks = tokener.getToks();
@@ -174,7 +158,6 @@ const newRegenDisp = () => {
         if(Stores[STORE_REGEN][LEFT].haveData()){
             const data = Stores[STORE_REGEN][LEFT].getData();
             const json = data.text;
-            //console.log(json)
             const tokener = newSourceTokener(json);
             //tokener.debugToks();
             const toks = tokener.getToks();
