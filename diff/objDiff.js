@@ -1,18 +1,22 @@
 const objToString = (obj) => {
     if(obj){
         const objInfo = obj[keys.objInfo];
-        return objInfo? `Obj: ${objInfo.range.iStart+1}-${objInfo.range.iEnd+1}, ${objInfo.iClass}` : "Obj: No Info";
+        return objInfo? `Obj: ${objInfo.s+1}-${objInfo.e+1}, ${objInfo.k}` : "Obj: No Info";
     }
     return "Obj: Null";
 };
-const newPreDiff = (jObject) => {
-    const parseObj = (parent, subject) => {
+const newPreDiff = (jObject, subject) => {
+    const parseObj = (parent) => {
         // initialize range for the other object, set to -1 to indicate not found
         // check for null because added list braces do not have objInfo
         if(parent[keys.objInfo]){
             const objInfo = parent[keys.objInfo];
-            objInfo.rangeOther = {iStart: -1, iEnd: -1};
-            objInfo.match = false;
+            objInfo.t = oTypes.startObj;   // indicates an object start
+            objInfo.i = objInfo.s;  // make compatible with valInfo
+            objInfo.iOther = -1;
+            objInfo.eOther = -1;
+            objInfo.keyMatch = false;
+            objInfo.valMatch = false;
             objInfo.subject = subject;
         }
 
@@ -40,32 +44,40 @@ const newPreDiff = (jObject) => {
 }
 
 const newObjDiff = (objL, objR) => {
-    let results = [];
-
     const matchObjects = (left, right) => {
         if(left && right){
-            // handle added list braces, which do not have objInfo
-            if(!left[keys.objInfo] && !right[keys.objInfo]){
-                console.log("added list braces match")
-                return true;
-            }
-
             const objInfoL = left[keys.objInfo];
             const objInfoR = right[keys.objInfo];
 
-            const match = (objInfoL?.iClass === objInfoR?.iClass);
+            // ignore added list braces, which do not have objInfo
+            if(!objInfoL && !objInfoR){
+                //console.log("added list braces match")
+                return true;
+            }
+
+            // since we're parsing it, call keyMatch true
+            objInfoL.keyMatch = true;
+            objInfoR.keyMatch = true;
+
+            const valMatch = (objInfoL?.k === objInfoR?.k);
+            //console.log(objInfoL?.k, valMatch, objInfoR?.k)
+            if(
+                valMatch &&        // if unmatched, leave false, -1, -1
+                !objInfoL.valMatch // skip this part if already set
+            ){
+                objInfoL.valMatch = true;
+                objInfoR.valMatch = true;
     
-            if(match && !objInfoL.match){// skip this part if already set
-                objInfoL.match = true;
-                objInfoR.match = true;
-    
-                objInfoL.rangeOther = {...objInfoR.range};
-                objInfoR.rangeOther = {...objInfoL.range};
-                console.log("Obj Equal")
-                console.log(">>", objToString(left), "\n  ", objToString(right))
+                objInfoL.iOther = objInfoR.i;
+                objInfoL.eOther = objInfoR.e;
+
+                objInfoR.iOther = objInfoL.i;
+                objInfoR.eOther = objInfoL.e;
+                //console.log("Obj Equal", objInfoL.subject)
+                //console.log(">>", objToString(left), "\n  ", objToString(right))
             }
             
-            return match;
+            return valMatch;
         }
     }
 
@@ -81,7 +93,11 @@ const newObjDiff = (objL, objR) => {
                 const cTypeL = getType(childL);
                 const cTypeR = getType(childR);
 
-                if(childL && childR && cTypeL === cTypeR){
+                if(
+                    !Util.isNull(childL) && 
+                    !Util.isNull(childR) && 
+                    cTypeL === cTypeR
+                ){
                     // find the corresponding info item in the other object
                     const infoItemR = parentR[keys.valInfo].find(t => t.k === infoItemL.k);
 
@@ -92,18 +108,22 @@ const newObjDiff = (objL, objR) => {
                         infoItemL.keyMatch = true;
                         infoItemR.keyMatch = true;
 
-                        console.log(`${infoItemL.i + 1}: keyMatch: ${infoItemL.k}`);
+                        let valMatch;
+
+                        //console.log(`${infoItemL.i + 1}: keyMatch: ${infoItemL.k}`);
 
                         if(cTypeL === cType.o){
-                            parseObj(childL, childR);
+                            valMatch = parseObj(childL, childR);
+                            infoItemL.valMatch = valMatch;
+                            infoItemR.valMatch = valMatch;
                         }
-                        else if(!infoItemL.valMatch){
-                            const valMatch = (childL === childR);
+                        else {
+                            valMatch = (childL === childR);
 
                             infoItemL.valMatch = valMatch;
                             infoItemR.valMatch = valMatch;
                             if(valMatch){
-                                console.log(`${infoItemL.i + 1}: valMatch: ${infoItemL.k}: '${childL}', ${childR}'`);
+                                //console.log(`${infoItemL.i + 1}: valMatch: ${infoItemL.k}: '${childL}', ${childR}'`);
                             }
                         }
                     }
@@ -114,67 +134,186 @@ const newObjDiff = (objL, objR) => {
 
                 }
                 else{
-                    console.log(`${infoItemL.i + 1}: No match: ${key} => '${childL}' '${childR}'`)
+                    //console.log(`${infoItemL.i + 1}: No match: ${key} => '${childL}' '${childR}'`)
+                }
+            }
+
+            return true;
+        }
+
+        return false;
+    }
+
+    const init = () => {
+        //console.log("Diff LR")
+        parseObj(objL, objR);
+        //console.log("Diff RL")
+        parseObj(objR, objL);
+    }
+    init();
+}
+
+const newResultParse = (objL, objR) => {
+    const genUq = (valInfo, subject) => {
+        return (subject === LEFT) ? 
+            `${valInfo.k}${valInfo.i}_${valInfo.iOther}` : 
+            `${valInfo.k}${valInfo.iOther}_${valInfo.i}`;
+    }
+
+    const newResultAcc = () => {
+        const set = new Set();
+        const list = [];
+
+        const add = (valInfo, subject) => {
+            if(valInfo){
+                const uq = genUq(valInfo, subject);
+                //console.log(subject, uq)
+                if(!set.has(uq)){
+                    //console.log(subject, valInfo.k, valInfo.t, !!valInfo.keyMatch, !!valInfo.valMatch, valInfo.i, valInfo.iOther)
+                    set.add(uq);
+                    list.push(valInfo)
                 }
             }
         }
+
+        const sort = () => list.sort((a, b) => a.i - b.i);
+
+        return {
+            add: add,
+            sort: sort,
+            toList: () =>  list
+        };
     }
 
-    const parseResults = (parent) => {
-        if(parent[keys.objInfo]){
-            results.push(parent[keys.objInfo]);
+    let tab = 0;
+
+    const preParse = (parent, grandparent) => {
+        if(parent[keys.objInfo] && grandparent && !grandparent[keys.objInfo]){
+            grandparent[keys.objInfo] = {...parent[keys.objInfo], k: "ignore"};
+            console.log("added", grandparent[keys.objInfo])
         }
 
         const valInfo = parent[keys.valInfo];
         
         for(let infoItem of valInfo){
-            results.push(infoItem);
-
-            const key = infoItem.k;
-            const child = parent[key];
-
+            const child = parent[infoItem.k];
             if(getType(child) === cType.o){
-                parseResults(child);
+                preParse(child, parent);
             }
         }
     }
 
-    const dispResults = () => {
-        results.sort((a, b) => a.subject - b.subject);
-        for(let item of results){
-            if(item.range){
-                const match = item.match? "obj" : "---";
-                console.log(`${match}: ${item.iClass}, ${item.range.iStart + 1}-${item.range.iEnd + 1}, ${item.rangeOther.iStart + 1}-${item.rangeOther.iEnd + 1}`);
+    const accResults = (parents) => {
+        //console.log("s tab", tab++);
+        const parentAcc = newResultAcc();
+        const valInfoAcc = newResultAcc();
+        parents.forEach((p) => {
+            if(p){
+                const objInfo = p[keys.objInfo];
+                objInfo.rAcc = parentAcc;
+                objInfo.tab = tab;
+
+                const vInfo = p[keys.valInfo];
+                vInfo.forEach(v => parentAcc.add(v, v.subject))
             }
-            else{
-                const keyMatch = item.keyMatch? "Key" : "---";
-                const valMatch = item.valMatch? "Val" : "---";
-                console.log(`${keyMatch}${valMatch}: ${item.k}, ${item.i + 1}, ${item.iOther + 1}`);
+        });
+
+        tab++
+        
+        parentAcc.toList().forEach(info => {
+            if(info.t === tTypes.oBrace){
+                const key = info.k;
+                //console.log(parents.map((p) => (p && p[key])? p[key][keys.objInfo]?.k : null))
+                accResults(
+                    parents.map((p) => p? p[key] : null)
+                );
             }
-        }
+        });
+
+        tab--;
+        
+        //endObjAcc.toList().forEach(info => disp(info));
+        //console.log("e tab", --tab);
     }
 
+    let resultAcc;
+
+    const listResults = (parents) => {
+        let parentAcc;
+        parents.forEach((p) => {
+            if(p){
+                const objInfo = p[keys.objInfo];
+                resultAcc.add(objInfo, objInfo.subject);
+
+                parentAcc = objInfo.rAcc;
+            }
+        });
+        
+        parentAcc.toList().forEach(info => {
+            if(info.t === tTypes.oBrace){
+                const key = info.k;
+                //console.log(parents.map((p) => (p && p[key])? p[key][keys.objInfo]?.k : null))
+                listResults(
+                    parents.map((p) => p? p[key] : null)
+                );
+            }
+        });
+        
+        //endObjAcc.toList().forEach(info => disp(info));
+    }
+
+    const disp = (r, parentTab = 0) => {
+        if(r){
+            const indent = (parentTab)? ' '.repeat(parentTab * 2) : "";
+            const keyMatch = r.keyMatch? "Key" : "---";
+            const valMatch = r.valMatch? "Val" : "---";
+            const i = r.i;
+            const iOther = r.iOther;
+            console.log(`${keyMatch}${valMatch}: ${indent} ${r.t} ${r.k} ${SubjectNames[r.subject]} ${i + 1}, ${iOther + 1}`);
+
+        }
+    }
     const init = () => {
-        console.log("Diff LR")
-        parseObj(objL, objR);
-        console.log("Diff RL")
-        parseObj(objR, objL);
+        resultAcc = newResultAcc();
 
-        console.log("\nResults")
-        parseResults(objL);
-        parseResults(objR);
-        dispResults();
-        // console.log(results);
+        if(objL[keys.objInfo]?.valMatch){
+            //subject = LEFT;
+            preParse(objL, null);
+            preParse(objR, null);
+            console.log("\nResults")
+            accResults([objL, objR]);
+            listResults([objL, objR]);
+
+            resultAcc.sort();
+            const list = resultAcc.toList();
+            for(let parent of list){
+                disp(parent, parent.tab)
+                parent.rAcc.sort();
+                const childList = parent.rAcc.toList();
+                for(let r of childList){
+                    disp(r, parent.tab + 1);
+                }
+
+                const cBrace = {...parent, t: oTypes.endObj, i: parent.e, iOther: parent.eOther};
+                disp(cBrace, parent.tab)
+            }
+
+
+            //dispResults();
+            // console.log(results);
+        }
     }
     init();
 }
 
 const ObjDiffMain = (() => {
     const init = (objL, objR) => {
-        const preDiffL = newPreDiff(objL, LEFT);
-        const preDiffR = newPreDiff(objR, RIGHT);
+        newPreDiff(objL, LEFT);
+        newPreDiff(objR, RIGHT);
 
-        const objDiff = newObjDiff(objL, objR);
+        newObjDiff(objL, objR);
+
+        const resultParse = newResultParse(objL, objR);
     };
 
     return {

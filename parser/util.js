@@ -47,12 +47,16 @@ const Util = (() => {
     const ensureCloseQuote = (val) => {
         return `${trimQuotes(val)}"`;
     }
+    const isNull = (x) => {
+        return x === null || x === undefined;
+    }
 
     return {
         trimQuotes: trimQuotes,
         ensureQuotes: ensureQuotes,
         ensureOpenQuote: ensureOpenQuote,
-        ensureCloseQuote: ensureCloseQuote
+        ensureCloseQuote: ensureCloseQuote,
+        isNull: isNull
     };
 })();
 

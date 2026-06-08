@@ -7,9 +7,10 @@ const newTokClean = (tokens) => {
             const tNext = tokens[i + 1];
             if(t.type === tTypes.oBrace && tNext.type === tTypes.iClass){
                 t[keys.objInfo] = {
-                    iClass: tNext.val,
-                    home: !!t.home,
-                    range: {iStart: t.iLine, iEnd: -1}
+                    k: tNext.val,
+                    h: !!t.home,// home (new line)
+                    s: t.iLine, // start brace index
+                    e: -1       // end brace index
                 };
             }
         }
@@ -196,7 +197,7 @@ const newTabOps = (tokens) => {
                     }
                     else if(t.type === tTypes.cBrace){
                         if(oBrace){
-                            oBrace[keys.objInfo].range.iEnd = t.iLine;
+                            oBrace[keys.objInfo].e = t.iLine;
                             oBrace = null;
                         }
                         else{

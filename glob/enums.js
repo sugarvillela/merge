@@ -41,6 +41,11 @@ const cType = {// common types
     n: "n", // null
 };
 
+const oTypes = {// opening, closing braces in diff
+    startObj: "{",
+    endObj: "}"
+}
+
 const keys = {// special json keys for internal use
     objInfo: "MM_OBJ_INFO", // classname after {, iLine start, iLine end
     valInfo: "MM_VAL_INFO", // keys: type, subtype for qVal, iLine for val

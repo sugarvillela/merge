@@ -54,10 +54,10 @@ const newJsonToTokens = (jObject, metadata) => {
     const parseObj = (obj) => {
         const objInfo = obj[keys.objInfo];
         const valInfo = obj[keys.valInfo];
-
-        add(tTypes.oBrace, "{", tab, objInfo.home);
+        
+        add(tTypes.oBrace, "{", tab, objInfo.h);// objInfo.h = home
         tab++;
-        add(tTypes.iClass, ` ${objInfo.iClass}`, tab);
+        add(tTypes.iClass, ` ${objInfo.k}`, tab);
 
         for(let infoItem of valInfo){
             const key = infoItem.k;

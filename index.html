@@ -131,6 +131,7 @@
     <script src="parser/jsonToSrc.js"></script>
     <script src="disp/disp.js"></script>
     <script src="diff/dispDiff.js"></script>
+    <script src="diff/classDiff.js"></script>
     <script src="diff/objDiff.js"></script>
     <script src="diff/diff.js"></script>
     <script src="parser/fileitr.js"></script>
@@ -172,7 +173,8 @@
                     const dataL = Stores[STORE_JSON][LEFT].getData();
                     const dataR = Stores[STORE_JSON][RIGHT].getData();
                     //console.log(data)
-                    ObjDiffMain.init(dataL.text, dataR.text);
+                    //ObjDiffMain.init(dataL.text, dataR.text);
+                    ClassDiffMain.init(dataL.text, dataR.text);
                 }
 
             }
@@ -207,6 +209,8 @@
                     break;
             }
         }
+
+        // setView(3) jsonToSrc
     </script>
 </body>
 </html>
